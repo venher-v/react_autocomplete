@@ -2,40 +2,30 @@ import React, { useMemo, useState } from 'react';
 import './App.scss';
 import { peopleFromServer } from './data/people';
 import { Person } from './types/Person';
+import debounce from 'lodash.debounce';
 
 export const App: React.FC = () => {
   const [query, setQuery] = useState('');
   const [visible, setVisible] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const [debounceQuery, setDebonceQuery] = useState('');
   const filteringPeople = useMemo(() => {
-    if (!query.trim()) {
+    if (!debounceQuery.trim()) {
       return peopleFromServer;
     }
 
     return peopleFromServer.filter(person => {
       const name = person.name.toLowerCase();
 
-      return name.includes(query.toLowerCase());
+      return name.includes(debounceQuery.toLowerCase());
     });
-  }, [query]);
-
-  const handleQueryChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-
-    setQuery(value);
-
-    if (!filteringPeople.find(person => person.name === value)) {
-      setSelectedPerson(null);
-    }
-
-    setVisible(true);
-  };
+  }, [debounceQuery]);
 
   const onFocus = () => {
     setVisible(true);
   };
 
-  const onBlure = () => {
+  const onBlur = () => {
     setTimeout(() => setVisible(false), 100);
   };
 
@@ -43,6 +33,27 @@ export const App: React.FC = () => {
     setSelectedPerson(person);
     setQuery(person.name);
     setVisible(false);
+  };
+
+  const debouncedQuery = useMemo(
+    () =>
+      debounce((value: string) => {
+        setDebonceQuery(value);
+      }, 300),
+    [],
+  );
+
+  const handleQueryChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+
+    setQuery(value);
+    debouncedQuery(value);
+
+    if (!filteringPeople.find(person => person.name === value)) {
+      setSelectedPerson(null);
+    }
+
+    setVisible(true);
   };
 
   const hasPeople = filteringPeople.length > 0;
@@ -66,7 +77,7 @@ export const App: React.FC = () => {
               value={query}
               onChange={handleQueryChange}
               onFocus={onFocus}
-              onBlur={onBlure}
+              onBlur={onBlur}
             />
           </div>
 
@@ -82,7 +93,7 @@ export const App: React.FC = () => {
                     <div
                       className="dropdown-item"
                       data-cy="suggestion-item"
-                      key={people.slug}
+                      key={people.name}
                       onClick={() => {
                         handleSelectPerson(people);
                       }}
